@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }));
 
-const { createSession } = await import("@/lib/auth");
+const { createSession, getSession } = await import("@/lib/auth");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -54,4 +54,29 @@ test("createSession produces a valid JWT containing userId and email", async () 
 
   expect(payload.userId).toBe("user-456");
   expect(payload.email).toBe("hello@example.com");
+});
+
+test("getSession returns payload from a valid token", async () => {
+  await createSession("user-789", "session@example.com");
+  const token = mockCookieStore.set.mock.calls[0][1];
+  mockCookieStore.get.mockReturnValue({ value: token });
+
+  const session = await getSession();
+  expect(session).not.toBeNull();
+  expect(session!.userId).toBe("user-789");
+  expect(session!.email).toBe("session@example.com");
+});
+
+test("getSession returns null when no cookie exists", async () => {
+  mockCookieStore.get.mockReturnValue(undefined);
+
+  const session = await getSession();
+  expect(session).toBeNull();
+});
+
+test("getSession returns null for an invalid token", async () => {
+  mockCookieStore.get.mockReturnValue({ value: "not-a-valid-jwt" });
+
+  const session = await getSession();
+  expect(session).toBeNull();
 });
