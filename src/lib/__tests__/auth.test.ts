@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }));
 
-const { createSession, getSession } = await import("@/lib/auth");
+const { createSession, getSession, deleteSession } = await import("@/lib/auth");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -79,4 +79,11 @@ test("getSession returns null for an invalid token", async () => {
 
   const session = await getSession();
   expect(session).toBeNull();
+});
+
+test("deleteSession removes the auth cookie", async () => {
+  await deleteSession();
+
+  expect(mockCookieStore.delete).toHaveBeenCalledTimes(1);
+  expect(mockCookieStore.delete).toHaveBeenCalledWith("auth-token");
 });
