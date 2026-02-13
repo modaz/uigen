@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }));
 
-const { createSession, getSession, deleteSession } = await import("@/lib/auth");
+const { createSession, getSession, deleteSession, verifySession } = await import("@/lib/auth");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -86,4 +86,36 @@ test("deleteSession removes the auth cookie", async () => {
 
   expect(mockCookieStore.delete).toHaveBeenCalledTimes(1);
   expect(mockCookieStore.delete).toHaveBeenCalledWith("auth-token");
+});
+
+test("verifySession returns payload from a valid token in request", async () => {
+  await createSession("user-abc", "verify@example.com");
+  const token = mockCookieStore.set.mock.calls[0][1];
+
+  const mockRequest = {
+    cookies: { get: vi.fn().mockReturnValue({ value: token }) },
+  };
+
+  const session = await verifySession(mockRequest as any);
+  expect(session).not.toBeNull();
+  expect(session!.userId).toBe("user-abc");
+  expect(session!.email).toBe("verify@example.com");
+});
+
+test("verifySession returns null when no cookie in request", async () => {
+  const mockRequest = {
+    cookies: { get: vi.fn().mockReturnValue(undefined) },
+  };
+
+  const session = await verifySession(mockRequest as any);
+  expect(session).toBeNull();
+});
+
+test("verifySession returns null for an invalid token in request", async () => {
+  const mockRequest = {
+    cookies: { get: vi.fn().mockReturnValue({ value: "bad-token" }) },
+  };
+
+  const session = await verifySession(mockRequest as any);
+  expect(session).toBeNull();
 });
